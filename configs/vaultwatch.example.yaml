@@ -1,0 +1,37 @@
+# vaultwatch.yaml — Example configuration file
+# Copy this to vaultwatch.yaml and fill in your values.
+
+vault:
+  # Address of your HashiCorp Vault instance.
+  address: "https://vault.example.com"
+
+  # Vault token with read access to the monitored secret paths.
+  # Prefer setting VAULT_TOKEN env var in production instead.
+  token: "s.REPLACE_ME"
+
+  # (Optional) Vault namespace for Vault Enterprise users.
+  # namespace: "my-org/team"
+
+alerts:
+  # How far before expiry to start sending WARNING alerts.
+  warn_before: "168h"      # 7 days
+
+  # How far before expiry to escalate to CRITICAL alerts.
+  critical_before: "24h"   # 1 day
+
+  # (Optional) Slack incoming webhook URL for alert delivery.
+  slack_webhook: "https://hooks.slack.com/services/T000/B000/XXXX"
+
+  # (Optional) Email address to send alert notifications.
+  # email: "ops-team@example.com"
+
+# List of Vault secret paths to monitor.
+secrets:
+  - path: "secret/data/myapp/database"
+    description: "Production database credentials"
+
+  - path: "secret/data/myapp/api-key"
+    description: "Third-party API key for payment service"
+
+  - path: "secret/data/infra/tls-cert"
+    description: "TLS certificate for api.example.com"
