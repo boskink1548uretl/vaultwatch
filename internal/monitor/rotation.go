@@ -54,3 +54,19 @@ func (rm *RotationManager) MaybeRotate(ctx context.Context, result CheckResult) 
 	log.Printf("[rotation] rotated %s → version %d", rr.Path, rr.NewVersion)
 	return rr, nil
 }
+
+// MaybeRotateAll runs MaybeRotate for each result in the provided slice, collecting
+// all rotation results. If any rotation fails, the error is returned immediately.
+func (rm *RotationManager) MaybeRotateAll(ctx context.Context, results []CheckResult) ([]*vault.RotateResult, error) {
+	var rotated []*vault.RotateResult
+	for _, result := range results {
+		rr, err := rm.MaybeRotate(ctx, result)
+		if err != nil {
+			return rotated, err
+		}
+		if rr != nil {
+			rotated = append(rotated, rr)
+		}
+	}
+	return rotated, nil
+}
