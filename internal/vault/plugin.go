@@ -7,31 +7,24 @@ import (
 	"net/http"
 )
 
-// Plugin represents a registered Vault plugin.
+// Plugin represents a Vault plugin registration.
 type Plugin struct {
 	Name    string `json:"name"`
-	Type    string `json:"type"` // auth, secret, database
+	Type    string `json:"type"`
 	Version string `json:"version"`
 	Builtin bool   `json:"builtin"`
-	SHA256  string `json:"sha256"`
-	Command string `json:"command"`
+	SHA256  string `json:"sha256,omitempty"`
 }
 
-// pluginCatalogResponse is the raw API response for listing plugins.
-type pluginCatalogResponse struct {
+// pluginListResponse mirrors the Vault API response for listing plugins.
+type pluginListResponse struct {
 	Data struct {
 		Detailed []Plugin `json:"detailed"`
 	} `json:"data"`
 }
 
-// pluginSingleResponse is the raw API response for a single plugin lookup.
-type pluginSingleResponse struct {
-	Data Plugin `json:"data"`
-}
-
-// ListPlugins returns all registered plugins of the given type.
-// Valid types are "auth", "secret", and "database".
-// Pass an empty string to list all plugin types.
+// ListPlugins returns all registered plugins of the given type ("auth", "secret", "database").
+// Pass an empty string to list all types.
 func (c *Client) ListPlugins(ctx context.Context, pluginType string) ([]Plugin, error) {
 	path := "/v1/sys/plugins/catalog"
 	if pluginType != "" {
@@ -40,13 +33,13 @@ func (c *Client) ListPlugins(ctx context.Context, pluginType string) ([]Plugin, 
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.address+path, nil)
 	if err != nil {
-		return nil, fmt.Errorf("building list plugins request: %w", err)
+		return nil, fmt.Errorf("build request: %w", err)
 	}
 	req.Header.Set("X-Vault-Token", c.token)
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("listing plugins: %w", err)
+		return nil, fmt.Errorf("list plugins: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -54,32 +47,29 @@ func (c *Client) ListPlugins(ctx context.Context, pluginType string) ([]Plugin, 
 		return nil, nil
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("listing plugins: unexpected status %d", resp.StatusCode)
+		return nil, fmt.Errorf("list plugins: unexpected status %d", resp.StatusCode)
 	}
 
-	var result pluginCatalogResponse
+	var result pluginListResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("decoding plugin list response: %w", err)
+		return nil, fmt.Errorf("decode plugins: %w", err)
 	}
 	return result.Data.Detailed, nil
 }
 
-// GetPlugin retrieves details for a specific plugin by type and name.
+// GetPlugin returns a single plugin by type and name.
 func (c *Client) GetPlugin(ctx context.Context, pluginType, name string) (*Plugin, error) {
-	if pluginType == "" || name == "" {
-		return nil, fmt.Errorf("plugin type and name must not be empty")
-	}
-
 	path := fmt.Sprintf("/v1/sys/plugins/catalog/%s/%s", pluginType, name)
+
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.address+path, nil)
 	if err != nil {
-		return nil, fmt.Errorf("building get plugin request: %w", err)
+		return nil, fmt.Errorf("build request: %w", err)
 	}
 	req.Header.Set("X-Vault-Token", c.token)
 
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("getting plugin %s/%s: %w", pluginType, name, err)
+		return nil, fmt.Errorf("get plugin: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -87,12 +77,14 @@ func (c *Client) GetPlugin(ctx context.Context, pluginType, name string) (*Plugi
 		return nil, nil
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("getting plugin %s/%s: unexpected status %d", pluginType, name, resp.StatusCode)
+		return nil, fmt.Errorf("get plugin: unexpected status %d", resp.StatusCode)
 	}
 
-	var result pluginSingleResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("decoding plugin response: %w", err)
+	var wrapper struct {
+		Data Plugin `json:"data"`
 	}
-	return &result.Data, nil
+	if err := json.NewDecoder(resp.Body).Decode(&wrapper); err != nil {
+		return nil, fmt.Errorf("decode plugin: %w", err)
+	}
+	return &wrapper.Data, nil
 }
