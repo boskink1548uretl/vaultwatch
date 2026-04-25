@@ -90,3 +90,30 @@ func TestGetNamespace_NotFound(t *testing.T) {
 		t.Fatal("expected error for missing namespace, got nil")
 	}
 }
+
+func TestListNamespaces_ContainsExpectedKeys(t *testing.T) {
+	srv := newNamespaceMockServer(t)
+	defer srv.Close()
+
+	client, err := NewClient(srv.URL, "test-token")
+	if err != nil {
+		t.Fatalf("NewClient: %v", err)
+	}
+
+	keys, err := client.ListNamespaces(context.Background())
+	if err != nil {
+		t.Fatalf("ListNamespaces: %v", err)
+	}
+
+	expected := map[string]bool{"team-a/": false, "team-b/": false}
+	for _, k := range keys {
+		if _, ok := expected[k]; ok {
+			expected[k] = true
+		}
+	}
+	for k, found := range expected {
+		if !found {
+			t.Errorf("expected namespace key %q not found in results", k)
+		}
+	}
+}
