@@ -45,10 +45,12 @@ func (w *QuotaWatcher) Check(ctx context.Context) error {
 		return nil
 	}
 
+	var fetchErrors int
 	for _, name := range names {
 		q, err := w.client.GetQuota(ctx, name)
 		if err != nil {
 			w.logger.Printf("[quota] error fetching %s: %v", name, err)
+			fetchErrors++
 			continue
 		}
 		if q == nil {
@@ -58,6 +60,10 @@ func (w *QuotaWatcher) Check(ctx context.Context) error {
 			w.logger.Printf("[quota] warning: rule %q (path=%q rate=%.0f) has no block_interval — burst requests not blocked",
 				q.Name, q.Path, q.Rate)
 		}
+	}
+
+	if fetchErrors > 0 {
+		return fmt.Errorf("quota watcher: failed to fetch %d of %d quota rule(s)", fetchErrors, len(names))
 	}
 	return nil
 }
