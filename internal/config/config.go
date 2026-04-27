@@ -87,5 +87,12 @@ func (c *Config) validate() error {
 	if c.Alerts.CriticalBefore.Duration == 0 {
 		c.Alerts.CriticalBefore.Duration = 24 * time.Hour // default 1 day
 	}
+	if c.Alerts.CriticalBefore.Duration >= c.Alerts.WarnBefore.Duration {
+		return fmt.Errorf(
+			"alerts.critical_before (%s) must be less than alerts.warn_before (%s)",
+			c.Alerts.CriticalBefore.Duration,
+			c.Alerts.WarnBefore.Duration,
+		)
+	}
 	return nil
 }
